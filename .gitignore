@@ -1,0 +1,35 @@
+# -----
+build/
+ffmpeg-temp/
+#android/ffmpeg-*
+#android/openssl-*
+#ios/ffmpeg-*  by sentervip
+#ios/openssl-*  by sentervip
+#extra by sentervip
+.DS_Store
+#ijkmedia/ijkyuv/ by sentervip
+#ijkprof/android-ndk-profiler/ by sentervip
+
+# built application files
+*.apk
+*.ap_
+
+# files for the dex VM
+*.dex
+
+# Java class files
+*.class
+
+# generated files
+bin/
+gen/
+libs/
+obj/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio
+.idea
+.gradle
+build/
