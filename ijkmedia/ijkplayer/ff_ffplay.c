@@ -114,7 +114,7 @@
     .min = 0, \
     .max = 0, \
     .flags = AV_OPT_FLAG_DECODING_PARAM
-tagRecSwitch tagRecSw = {REC_STATUS_INVALID,0,"/sdcard/rec.mp4"}; //by vip add
+tagRecSwitch tagRecSw = {REC_STATUS_INVALID,0,"/sdcard//A1/rec.mp4"}; //by vip add
 
 static const AVOption ffp_context_options[] = {
     // original options in ffplay.c
