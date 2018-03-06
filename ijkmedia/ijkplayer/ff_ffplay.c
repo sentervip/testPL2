@@ -114,6 +114,7 @@
     .min = 0, \
     .max = 0, \
     .flags = AV_OPT_FLAG_DECODING_PARAM
+tagRecSwitch tagRecSw = {REC_STATUS_INVALID,"rec.mp4"}; //by vip add
 
 static const AVOption ffp_context_options[] = {
     // original options in ffplay.c
@@ -2657,6 +2658,55 @@ static int read_thread(void *arg)
     }
 
     for (;;) {
+        
+        //vip add
+#if 0
+        switch(tagRecSw.recSw){
+            case REC_STATUS_START:
+                avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, tagRecSw.fileOut);
+                if(!ofmt_ctx)
+                {
+                    LOGE("Output open error!\n");
+                }
+                
+                ofmt_ctx->flags |= AVFMT_FLAG_NOBUFFER;
+                ofmt_ctx->flags |= AVFMT_FLAG_FAST_SEEK;
+                
+                
+
+                // ofmt = ofmt_ctx->oformat;
+                // for(i = 0; i<ic->nb_streams; i++)
+                //{
+                //in_stream = ifmt
+                out_stream = avformat_new_stream(ofmt_ctx, is->video_st->codec->codec );// in_stream->codec->codec);
+                if(!out_stream)
+                {
+                    LOGE("Failed allocating output stream\n");
+                    
+                }
+                
+                //ret = avcodec_copy_context(out_stream->codec, is->video_st->codec);
+                ret = avcodec_parameters_from_context(out_stream->codecpar, is->video_st->codec);
+                if(ret < 0)
+                {
+                    LOGE("Failed to copy context from input to output stream codec context\n");
+                    
+                }
+                out_stream->codec->codec_tag = 0;
+                if(ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+                    out_stream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+                //}
+
+                break;
+            case REC_STATUS_STOP:
+                
+                break;
+            case REC_STATUS_INVALID:
+                
+                break;
+        }
+  #endif
+        
         if (is->abort_request)
             break;
 #ifdef FFP_MERGE
