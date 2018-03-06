@@ -114,7 +114,7 @@
     .min = 0, \
     .max = 0, \
     .flags = AV_OPT_FLAG_DECODING_PARAM
-tagRecSwitch tagRecSw = {REC_STATUS_INVALID,"rec.mp4"}; //by vip add
+tagRecSwitch tagRecSw = {REC_STATUS_INVALID,0,"/sdcard/rec.mp4"}; //by vip add
 
 static const AVOption ffp_context_options[] = {
     // original options in ffplay.c
@@ -1171,12 +1171,12 @@ display:
                 aqsize = is->audioq.size;
             if (is->video_st)
                 vqsize = is->videoq.size;
-#ifdef FFP_MERGE
-            if (is->subtitle_st)
-                sqsize = is->subtitleq.size;
-#else
+//#ifdef FFP_MERGE
+//            if (is->subtitle_st)
+ //               sqsize = is->subtitleq.size;
+//#else
             sqsize = 0;
-#endif
+//#endif
             av_diff = 0;
             if (is->audio_st && is->video_st)
                 av_diff = get_clock(&is->audclk) - get_clock(&is->vidclk);
@@ -1304,7 +1304,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     if (vp->bmp) {
         /* get a pointer on the bitmap */
         SDL_VoutLockYUVOverlay(vp->bmp);
-
+/*
 #ifdef FFP_MERGE
 #if CONFIG_AVFILTER
         // FIXME use direct rendering
@@ -1314,6 +1314,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         // sws_getCachedContext(...);
 #endif
 #endif
+ */
         if (SDL_VoutFFmpeg_ConvertFrame(vp->bmp, src_frame,
             &is->img_convert_ctx, ffp->sws_flags) < 0) {
             av_log(NULL, AV_LOG_FATAL, "Cannot initialize the conversion context\n");
@@ -2416,7 +2417,8 @@ static int is_realtime(AVFormatContext *s)
 }
 
 /* this thread gets the stream from the disk or the network */
-static int read_thread(void *arg)
+static int read_thread
+(void *arg)
 {
     FFPlayer *ffp = arg;
     VideoState *is = ffp->is;
@@ -2436,6 +2438,16 @@ static int read_thread(void *arg)
     int last_error = 0;
     int64_t prev_io_tick_counter = 0;
     int64_t io_tick_counter = 0;
+	
+	//add by vip
+	AVStream *out_stream = NULL;
+	unsigned int frame_index = 0; 
+	int pts_duation = 0;
+	int  pts1 = 0,pts2 = 0;
+	AVRational * time_base1 = NULL;
+	int64_t calc_duration = 0;
+	AVFormatContext *ofmt_ctx = NULL;
+	
 
     memset(st_index, -1, sizeof(st_index));
     is->last_video_stream = is->video_stream = -1;
@@ -2660,52 +2672,76 @@ static int read_thread(void *arg)
     for (;;) {
         
         //vip add
-#if 0
+
         switch(tagRecSw.recSw){
             case REC_STATUS_START:
                 avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, tagRecSw.fileOut);
                 if(!ofmt_ctx)
                 {
                     LOGE("Output open error!\n");
+					tagRecSw.recSw = REC_STATUS_INVALID;
+					avcodec_close(ofmt_ctx->streams[0]->codec); 
+					av_free(ofmt_ctx);
                 }
                 
                 ofmt_ctx->flags |= AVFMT_FLAG_NOBUFFER;
                 ofmt_ctx->flags |= AVFMT_FLAG_FAST_SEEK;
                 
                 
-
-                // ofmt = ofmt_ctx->oformat;
-                // for(i = 0; i<ic->nb_streams; i++)
-                //{
-                //in_stream = ifmt
                 out_stream = avformat_new_stream(ofmt_ctx, is->video_st->codec->codec );// in_stream->codec->codec);
                 if(!out_stream)
                 {
                     LOGE("Failed allocating output stream\n");
+					tagRecSw.recSw = REC_STATUS_INVALID;
+					av_freep(&ofmt_ctx->streams[0]);
+					av_free(ofmt_ctx);
                     
                 }
                 
-                //ret = avcodec_copy_context(out_stream->codec, is->video_st->codec);
-                ret = avcodec_parameters_from_context(out_stream->codecpar, is->video_st->codec);
+			
+                ret = avcodec_copy_context(out_stream->codec, is->video_st->codec);
                 if(ret < 0)
                 {
                     LOGE("Failed to copy context from input to output stream codec context\n");
+					tagRecSw.recSw = REC_STATUS_INVALID;
+					avcodec_close(ofmt_ctx->streams[0]->codec); 
+					av_freep(&ofmt_ctx->streams[0]->codec); 
+					av_freep(&ofmt_ctx->streams[0]);
+					av_free(ofmt_ctx);
                     
                 }
                 out_stream->codec->codec_tag = 0;
-                if(ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+				
+                if(ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER){
                     out_stream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-                //}
-
+                }
+				ret = avio_open(&ofmt_ctx->pb, &tagRecSw.fileOut, AVIO_FLAG_WRITE);
+				if(ret < 0){
+				    LOGE("avion open failed");
+					tagRecSw.recSw = REC_STATUS_INVALID;
+				}
+				ret = avformat_write_header(ofmt_ctx, NULL);
+				if(ret < 0){
+				    LOGE("avion write head failed");
+					tagRecSw.recSw = REC_STATUS_INVALID;
+				}
+                tagRecSw.recSw = REC_STATUS_RUNNING;
                 break;
             case REC_STATUS_STOP:
-                
-                break;
-            case REC_STATUS_INVALID:
-                
+				 if(tagRecSw.recSw >= REC_STATUS_START){
+					av_write_trailer(ofmt_ctx);
+					avcodec_close(ofmt_ctx->streams[0]->codec); 
+					av_freep(&ofmt_ctx->streams[0]->codec); 
+					av_freep(&ofmt_ctx->streams[0]);
+					avio_close(ofmt_ctx->pb); 
+					av_free(ofmt_ctx);
+					tagRecSw.recSw = REC_STATUS_INVALID;
+				 }
+                 break;
+			default:  //case REC_STATUS_INVALID:
                 break;
         }
-  #endif
+
         
         if (is->abort_request)
             break;
@@ -2938,7 +2974,7 @@ static int read_thread(void *arg)
         }
 
         /* check if packet is in play range specified by user, then queue, otherwise discard */
-        stream_start_time = ic->streams[pkt->stream_index]->start_time;
+        stream_start_time = ic->streams[is->video_stream]->start_time;
         pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
         pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
                 (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
@@ -2950,11 +2986,62 @@ static int read_thread(void *arg)
         } else if (pkt->stream_index == is->video_stream && pkt_in_play_range
                    && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
             packet_queue_put(&is->videoq, pkt);
-#ifdef FFP_MERGE
-        } else if (pkt->stream_index == is->subtitle_stream && pkt_in_play_range) {
-            packet_queue_put(&is->subtitleq, pkt);
-#endif
-        } else {
+            
+            // video record by vip
+			if(!pts1){
+			    pts1 = pkt->pts;
+			}else if(!pts2){
+			    pts2 = pkt->pts;
+			}
+            if(tagRecSw.recSw == REC_STATUS_RUNNING)
+            {
+
+                if( (tagRecSw.isFirstFrame == 0) && (pkt->flags & AV_PKT_FLAG_KEY)) {
+					tagRecSw.isFirstFrame = 1;
+					pts_duation = pkt->duration; //pts2 - pts1;
+				}
+
+                
+				 if(tagRecSw.isFirstFrame){
+					
+					 if(pkt->pts == AV_NOPTS_VALUE){
+                        //time_base1 = ic->streams[is->video_stream]->time_base;
+                        calc_duration = (double)AV_TIME_BASE/av_q2d(  ic->streams[is->video_stream]->r_frame_rate);
+                        pkt->pts = (double)(frame_index*calc_duration)/(double)(av_q2d(is->video_st->time_base)*AV_TIME_BASE);
+                        pkt->dts = pkt->pts;
+                        pkt->duration = (double)calc_duration/(double)(av_q2d(is->video_st->time_base)*AV_TIME_BASE);
+                    }
+                    //pkt->pts = av_rescale_q_rnd(pkt->pts, is->video_st->time_base, out_stream->time_base, (AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+                    //pkt->dts = av_rescale_q_rnd(pkt->dts, is->video_st->time_base, out_stream->time_base, (AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+                    //pkt->duration = av_rescale_q(pkt->duration, is->video_st->time_base, out_stream->time_base);
+                    //pkt->pos = -1;
+                             
+                    // if(pkt->stream_index == is->video_stream)
+                    frame_index++;          
+					LOG("wrt pkt=%d",frame_index);
+                    ret = av_interleaved_write_frame(ofmt_ctx, pkt);
+                    //av_free_packet(pkt);
+                    if(ret < 0){
+                        LOGE( "REC:Error muxing packet\n");
+						av_write_trailer(ofmt_ctx);
+
+						avcodec_close(ofmt_ctx->streams[0]->codec); 
+						av_freep(&ofmt_ctx->streams[0]->codec); 
+						av_freep(&ofmt_ctx->streams[0]);
+
+						avio_close(ofmt_ctx->pb); 
+						av_free(ofmt_ctx);
+						tagRecSw.recSw = REC_STATUS_INVALID;
+                       // goto fail;
+                    }
+				 } //if(tagRecSw.isFirstFrame)
+		   }//end if(tagRecSw.recSw == REC_STATUS_RUNNING)
+		   
+//#ifdef FFP_MERGE
+//        } else if (pkt->stream_index == is->subtitle_stream && pkt_in_play_range) {
+//            packet_queue_put(&is->subtitleq, pkt);
+//#endif
+        } else {   //end else if (pkt->stream_index == is->video_stream
             av_free_packet(pkt);
         }
         
@@ -2972,16 +3059,31 @@ static int read_thread(void *arg)
     }
 
     ret = 0;
+	
  fail:
-    /* close each stream */
+  
+	 /* close each stream */
     if (is->audio_stream >= 0)
         stream_component_close(ffp, is->audio_stream);
     if (is->video_stream >= 0)
         stream_component_close(ffp, is->video_stream);
-#ifdef FFP_MERGE
-    if (is->subtitle_stream >= 0)
-        stream_component_close(ffp, is->subtitle_stream);
-#endif
+	
+	// add by vip for record
+	if(tagRecSw.recSw >= REC_STATUS_START && tagRecSw.recSw < REC_STATUS_INVALID ){
+		av_write_trailer(ofmt_ctx);
+
+		avcodec_close(ofmt_ctx->streams[0]->codec); 
+		av_freep(&ofmt_ctx->streams[0]->codec); 
+		av_freep(&ofmt_ctx->streams[0]);
+
+		avio_close(ofmt_ctx->pb); 
+		av_free(ofmt_ctx);
+		tagRecSw.recSw = REC_STATUS_INVALID;
+	}
+//#ifdef FFP_MERGE
+//    if (is->subtitle_stream >= 0)
+//        stream_component_close(ffp, is->subtitle_stream);
+//#endif
     if (ic) {
         avformat_close_input(&is->ic);
         is->ic = NULL;
@@ -3012,18 +3114,18 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     /* start video display */
     if (frame_queue_init(&is->pictq, &is->videoq, ffp->pictq_size, 1) < 0)
         goto fail;
-#ifdef FFP_MERGE
-    if (frame_queue_init(&is->subpq, &is->subtitleq, SUBPICTURE_QUEUE_SIZE, 0) < 0)
-        goto fail;
-#endif
+//#ifdef FFP_MERGE
+//    if (frame_queue_init(&is->subpq, &is->subtitleq, SUBPICTURE_QUEUE_SIZE, 0) < 0)
+//        goto fail;
+//#endif
     if (frame_queue_init(&is->sampq, &is->audioq, SAMPLE_QUEUE_SIZE, 1) < 0)
         goto fail;
 
     packet_queue_init(&is->videoq);
     packet_queue_init(&is->audioq);
-#ifdef FFP_MERGE
-    packet_queue_init(&is->subtitleq);
-#endif
+//#ifdef FFP_MERGE
+//    packet_queue_init(&is->subtitleq);
+//#endif
 
     is->continue_read_thread = SDL_CreateCond();
 
@@ -3527,6 +3629,7 @@ int ffp_pause_l(FFPlayer *ffp)
         return EIJK_NULL_IS_PTR;
 
     toggle_pause(ffp, 1);
+	tagRecSw.recSw = REC_STATUS_START;
     return 0;
 }
 

@@ -33,7 +33,7 @@
 /** MACRO arch */
 #define   FMT_PLATFORM_IOS     1
 #define   FMT_PLATFORM_ANDROID  2
-#define FMT_PLATFORM_NOW    FMT_PLATFORM_IOS  // Please set it befor compiled !!!
+#define FMT_PLATFORM_NOW    FMT_PLATFORM_ANDROID  // Please set it befor compiled !!!
 
 
 #if (FMT_PLATFORM_NOW == FMT_PLATFORM_ANDROID)
@@ -62,13 +62,15 @@
 #define LOGD
 #endif
 
-#define  REC_STATUS_START      0xa437aa
-#define  REC_STATUS_STOP       0xa437ff
-#define  REC_STATUS_INVALID    0xa437ee
+#define  REC_STATUS_START      0xa437a1
+#define  REC_STATUS_RUNNING    0xa437a2
+#define  REC_STATUS_STOP       0xa437a3
+#define  REC_STATUS_INVALID    0xa437a4
 /** typedef  */
 #ifndef TAGRECORDSW
 typedef struct  strRecordSwitch{
     int  recSw;
+	int  isFirstFrame;
     char fileOut[128];
 }tagRecSwitch,*ptagRecSwitch;
 #endif

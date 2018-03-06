@@ -1,14 +1,14 @@
 # -----
 build/
 ffmpeg-temp/
-#android/ffmpeg-*
-#android/openssl-*
-#ios/ffmpeg-*  by sentervip
-#ios/openssl-*  by sentervip
-#extra by sentervip
+android/ffmpeg-*
+android/openssl-*
+ios/ffmpeg-* 
+ios/openssl-*  
+extra 
 .DS_Store
-#ijkmedia/ijkyuv/ by sentervip
-#ijkprof/android-ndk-profiler/ by sentervip
+ijkmedia/ijkyuv/ 
+ijkprof/android-ndk-profiler/ 
 
 # built application files
 *.apk
@@ -32,4 +32,4 @@ local.properties
 # Android Studio
 .idea
 .gradle
-build/
+build

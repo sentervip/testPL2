@@ -50,8 +50,10 @@
 
     [sampleList addObject:@[@"bipbop advanced master playlist",
                             @"http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8"]];
-    [sampleList addObject:@[@"bipbop advanced 416x234 @ 265 kbps",
-                            @"http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear1/prog_index.m3u8"]];
+    //[sampleList addObject:@[@"bipbop advanced 416x234 @ 265 kbps",
+    //                        @"http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear1/prog_index.m3u8"]];
+    [sampleList addObject:@[@"rtsp://192.168.42.1/live",
+                            @"rtsp://192.168.42.1/live"]];
     [sampleList addObject:@[@"bipbop advanced 640x360 @ 580 kbps",
                             @"http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear2/prog_index.m3u8"]];
     [sampleList addObject:@[@"bipbop advanced 960x540 @ 910 kbps",
